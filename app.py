@@ -545,13 +545,11 @@ with alerts_tab:
             "Stock symbol",
             placeholder="For example:TCS or RELIANCE.NS",
         )
-       
-       alert_condition= st.selectbox(
+       alert_condition = st.selectbox(
         "Condition",
         ["Price above", "Price below"],
-       )
-
-       alert_target= st.number_input(
+        )
+        alert_target= st.number_input(
         "Target price",
         min_value=0.01,
         value=100.0,

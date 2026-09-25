@@ -10,6 +10,15 @@ from src.data import extract_stock_symbol, fetch_history, normalize_symbol
 from src.indicators import add_indicators
 from src.metrics import performance_summary, rsi_signal, trend_signal
 from src.reporting import build_text_report
+from src.alerts_db import (
+    init_alerts_db,
+    add_alert,
+    get_alerts,
+    set_alert_enabled,
+    delete_alert,
+)
+
+from src.alerts import is_alert_triggered
 def format_inr(value):
     return f"INR {value:,.2f}"
 def get_sentiment_label(text):
@@ -25,6 +34,7 @@ def get_sentiment_label(text):
 
 st.set_page_config(page_title="Financial Research AI Agent", layout="wide")
 init_watchlist_db()
+init_alerts_db()
 st.markdown(
     """
     <style>
@@ -264,8 +274,8 @@ summary = performance_summary(data)
 latest_price = data["Close"].iloc[-1]
 latest_rsi = data["RSI"].dropna().iloc[-1] if not data["RSI"].dropna().empty else None
 
-overview, charts, risk, compare, watchlist, fundamentals, news, export = st.tabs(
-    ["Overview", "Charts", "Risk", "Comparison", "Watchlist", "Fundamentals", "News Sentiment", "Export"]
+overview, charts, risk, compare, watchlist, fundamentals, news,alerts_tab, export = st.tabs(
+    ["Overview", "Charts", "Risk", "Comparison", "Watchlist", "Fundamentals", "News Sentiment", "Alerts","Export"]
 )
 
 
@@ -526,6 +536,110 @@ with news:
 
                         if article["url"]:
                             st.link_button("Read article", article["url"])
+                 
+with alerts_tab:
+    st.subheader("Stock Price Alerts")
+
+    with st.form("create alert_form"):
+        alert_symbol= st.text_input(
+            "Stock symbol",
+            placeholder="For example:TCS or RELIANCE.NS",
+        )
+       
+       alert_condition= st.selectbox(
+        "Condition",
+        ["Price above", "Price below"],
+       )
+
+       alert_target= st.number_input(
+        "Target price",
+        min_value=0.01,
+        value=100.0,
+        step=0.50,
+       )
+       
+       create_alert_button = st.form_submitbutton("Create Alert")
+
+       if create_alert_button:
+        if not alert_symbol.strip():
+            st.error("Please enter a stock symbol.")
+            else:
+                add_alert(
+                    alert_symbol,
+                    alert_condition,
+                    alert_target,
+                )
+
+                st.success("Alert created successfully.")
+                st.rerun()
+
+                st.divider()
+                st.subheader("Existing Alerts")
+
+                alerts= get_alerts()
+
+                if not alerts:
+                    st.info("No alerts have been created yet.")
+                    
+                    else:
+
+                        for alert in alerts:
+                            alert_id = alert["id"]
+                            enabled = bool(alert["enabled"])
+
+                            col1,col2,col3,col4,col5 = st.columns(
+                                [2,2,1,5,1,1]
+                            )
+
+                            with col1:
+                                st.write(
+                                    f"**{alert['symbol']}**"
+                                    f"{alert['condition_type']}"
+                                )
+
+                                with col2:
+                                    st.write(
+                                        f"Target:**{alert['target_value']:.2f}**"
+                                    )
+
+                                with col3:
+                                    st.write(
+                                        "Enabled"if enabled else "Diabled"
+                                    )
+
+                                    with col4:
+                                        toggle_label = "Disable"if enabled else "Enable"
+
+                                        if st.button(
+                                            toggle_lable,
+                                            key=f"toggle_alert_{alert_id}",
+                                        ):
+                                        set_alert_enabled(alert_id,not enabled)
+                                        st.return()
+
+                                        with col5:
+                                            if st.button(
+                                                "Delete",
+                                                key = f"delete_alert_{alert_id}",
+                                            );
+                                            delete_alert(alert_id)
+                                            st.rerun()
+
+                                            if enabled:
+                                                triggered,latedt_price,message = is_alert_triggered(
+                                                    alert["symbol"],
+                                                    alert["condition_type"],
+                                                    alert["target_value"],
+                                                )
+
+                                                if triggered:
+                                                    st.warning(f"Alert triggered:{message}")
+                                                    elif message:
+                                                        st.caption(message)
+                                                        else:
+                                                            st.caption(
+                                                                f"Current price:{latest_price:.2f}"
+                                                            )
 
 with export:
     st.subheader("Export Reports")

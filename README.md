@@ -2,7 +2,7 @@
 
 A higher-level Streamlit financial research dashboard for Indian stock market analysis.
 
-## Features 
+## Features
 
 - Indian stock lookup using Yahoo Finance symbols such as `RELIANCE.NS`, `TCS.NS`, and `INFY.NS`
 - Stock price chatbot with symbol extraction
